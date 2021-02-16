@@ -1,17 +1,16 @@
 package handler
 
 import (
-	"database/sql"
 	"log"
 
 	"github.com/gofiber/fiber"
-	"github.com/nadirbasalamah/go-simple-api/database"
 	"github.com/nadirbasalamah/go-simple-api/model"
+	"github.com/nadirbasalamah/go-simple-api/service"
 )
 
 // GetProducts return all product data
 func GetProducts(c *fiber.Ctx) {
-	rows, err := database.DB.Query("SELECT id, name, description, category, amount FROM products ORDER BY name")
+	result, err := service.GetProducts()
 	if err != nil {
 		c.Status(500).JSON(&fiber.Map{
 			"success": false,
@@ -20,22 +19,7 @@ func GetProducts(c *fiber.Ctx) {
 		return
 	}
 
-	defer rows.Close()
-	result := model.Products{}
-	for rows.Next() {
-		product := model.Product{}
-		err := rows.Scan(&product.Id, &product.Name, &product.Description, &product.Category, &product.Amount)
-		if err != nil {
-			c.Status(500).JSON(&fiber.Map{
-				"success": false,
-				"message": err,
-			})
-			return
-		}
-		result.Products = append(result.Products, product)
-	}
-
-	if len(result.Products) == 0 {
+	if len(result) == 0 {
 		c.Status(404).JSON(&fiber.Map{
 			"success": false,
 			"message": "Product data not found",
@@ -61,32 +45,13 @@ func GetProduct(c *fiber.Ctx) {
 	id := c.Params("id")
 	product := model.Product{}
 
-	row, err := database.DB.Query("SELECT * FROM products WHERE id = $1", id)
+	product, err := service.GetProduct(id)
 	if err != nil {
 		c.Status(500).JSON(&fiber.Map{
 			"success": false,
 			"message": err,
 		})
 		return
-	}
-	defer row.Close()
-
-	for row.Next() {
-		switch err := row.Scan(&product.Id, &product.Amount, &product.Name, &product.Description, &product.Category); err {
-		case sql.ErrNoRows:
-			log.Println("Data not found")
-			c.Status(404).JSON(&fiber.Map{
-				"success": false,
-				"message": err,
-			})
-		case nil:
-			log.Println(product.Name, product.Description, product.Category, product.Amount)
-		default:
-			c.Status(500).JSON(&fiber.Map{
-				"success": false,
-				"message": err,
-			})
-		}
 	}
 
 	if product.Id == 0 {
@@ -132,7 +97,7 @@ func CreateProduct(c *fiber.Ctx) {
 		return
 	}
 
-	res, err := database.DB.Query("INSERT INTO products (name, description, category, amount) VALUES ($1, $2, $3, $4) ", p.Name, p.Description, p.Category, p.Amount)
+	res, err := service.CreateProduct(*p)
 	if err != nil {
 		c.Status(500).JSON(&fiber.Map{
 			"success": false,
@@ -178,7 +143,7 @@ func EditProduct(c *fiber.Ctx) {
 		return
 	}
 
-	res, err := database.DB.Query("UPDATE products SET name=$1, description=$2, category=$3, amount=$4 WHERE id=$5", p.Name, p.Description, p.Category, p.Amount, id)
+	res, err := service.EditProduct(*p, id)
 	if err != nil {
 		c.Status(500).JSON(&fiber.Map{
 			"success": false,
@@ -205,7 +170,7 @@ func EditProduct(c *fiber.Ctx) {
 // DeleteProduct func to delete a product data
 func DeleteProduct(c *fiber.Ctx) {
 	id := c.Params("id")
-	_, err := database.DB.Query("DELETE FROM products WHERE id = $1", id)
+	err := service.DeleteProduct(id)
 	if err != nil {
 		c.Status(500).JSON(&fiber.Map{
 			"success": false,
