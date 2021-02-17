@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log"
 
 	"github.com/gofiber/fiber"
@@ -12,18 +13,12 @@ import (
 func GetProducts(c *fiber.Ctx) {
 	result, err := service.GetProducts()
 	if err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 
 	if len(result) == 0 {
-		c.Status(404).JSON(&fiber.Map{
-			"success": false,
-			"message": "Product data not found",
-		})
+		failedResponse(c, errors.New("Product data not found"), 404)
 		return
 	}
 
@@ -32,10 +27,7 @@ func GetProducts(c *fiber.Ctx) {
 		"product": result,
 		"message": "All products data found",
 	}); err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 }
@@ -47,18 +39,12 @@ func GetProduct(c *fiber.Ctx) {
 
 	product, err := service.GetProduct(id)
 	if err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 
 	if product.Id == 0 {
-		c.Status(404).JSON(&fiber.Map{
-			"success": false,
-			"message": "Product data not found",
-		})
+		failedResponse(c, errors.New("Product data not found"), 404)
 		return
 	}
 
@@ -67,10 +53,7 @@ func GetProduct(c *fiber.Ctx) {
 		"message": "Product Data Found",
 		"product": product,
 	}); err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 }
@@ -80,29 +63,20 @@ func CreateProduct(c *fiber.Ctx) {
 	p := new(model.Product)
 	if err := c.BodyParser(p); err != nil {
 		log.Println(err)
-		c.Status(400).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 400)
 		return
 	}
 
 	err := p.ValidateRequest()
 
 	if err != nil {
-		c.Status(400).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 400)
 		return
 	}
 
 	res, err := service.CreateProduct(*p)
 	if err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 
@@ -112,10 +86,7 @@ func CreateProduct(c *fiber.Ctx) {
 		"success": true,
 		"message": "Product created",
 	}); err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": "Product failed to create",
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 }
@@ -126,29 +97,20 @@ func EditProduct(c *fiber.Ctx) {
 	p := new(model.Product)
 	if err := c.BodyParser(p); err != nil {
 		log.Println(err)
-		c.Status(400).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 400)
 		return
 	}
 
 	err := p.ValidateRequest()
 
 	if err != nil {
-		c.Status(400).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 400)
 		return
 	}
 
 	res, err := service.EditProduct(*p, id)
 	if err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 
@@ -159,10 +121,7 @@ func EditProduct(c *fiber.Ctx) {
 		"message": "Product updated",
 		"product": p,
 	}); err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": "Product failed to update",
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 }
@@ -172,10 +131,7 @@ func DeleteProduct(c *fiber.Ctx) {
 	id := c.Params("id")
 	err := service.DeleteProduct(id)
 	if err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
 
@@ -183,10 +139,14 @@ func DeleteProduct(c *fiber.Ctx) {
 		"success": true,
 		"message": "Product deleted",
 	}); err != nil {
-		c.Status(500).JSON(&fiber.Map{
-			"success": false,
-			"message": err,
-		})
+		failedResponse(c, err, 500)
 		return
 	}
+}
+
+func failedResponse(c *fiber.Ctx, err error, code int) {
+	c.Status(code).JSON(&fiber.Map{
+		"success": false,
+		"message": err.Error(),
+	})
 }
